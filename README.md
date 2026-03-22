@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌌 Horizon: Profitability Radar
 
-## Getting Started
+Horizon es un visualizador premium de oportunidades laborales diseñado para el perfil de **Santi**. Utiliza IA avanzada para analizar ofertas, priorizar rentabilidad y generar pitches operativos inmediatos.
 
-First, run the development server:
+## ✨ Filosofía "Wisdom Core"
+Horizon no es solo una base de datos; es un motor de inteligencia que aplica la **Regla de Rentabilidad Proporcional** para asegurar que cada minuto invertido en una propuesta valga la pena.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Características Principales
+- 🧠 **Radar de Interés:** Visualización de alto impacto con scroll infinito y efecto "Fog Edge".
+- ⚡ **Bypass Mode:** Importación manual de JSON para optimización de costos de API.
+- 🔍 **Extracción Inteligente:** Identifica automáticamente `posted_at`, `job_link` y `company_link`.
+- 📋 **CRM Operativo:** Marca ofertas como "Applied" y gestiónalas en el archivo histórico.
+- 🎨 **Estética Premium:** Tema oscuro con acentos cinéticos y tipografía moderna.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Stack Tecnológico
+- **Frontend:** Next.js 15, Tailwind CSS, Shadcn UI, Framer Motion.
+- **Backend:** Convex (Real-time DB & Cloud Functions).
+- **AI Engine:** Google Gemini (2.0 Flash/Pro) vía AI SDK.
+- **Markdown:** React-Markdown para renderizado elegante de estrategias.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Inicio Rápido
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Instalar dependencias:**
+   ```bash
+   npm install
+   ```
 
-## Learn More
+2. **Configurar variables de entorno:**
+   Crea un archivo `.env.local` con:
+   ```env
+   CONVEX_DEPLOYMENT=...
+   NEXT_PUBLIC_CONVEX_URL=...
+   GOOGLE_GENERATIVE_AI_API_KEY=...
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+3. **Ejecutar en desarrollo:**
+   ```bash
+   npm run dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📜 Protocolo de Análisis
+Horizon utiliza un **System Prompt** inyectado dinámicamente que prioriza:
+1. Rentabilidad Proporcional (Esfuerzo vs. Recompensa).
+2. Tiers de Valor (Tier 1 a Tier 4).
+3. Estrategia de Pitch "Punchy".
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Desarrollado con precisión para Horizon Deck.*

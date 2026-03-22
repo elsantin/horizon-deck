@@ -1,0 +1,21 @@
+# Horizon Deck - Contexto para LLMs
+> App de análisis estratégico de empleos freelance (ofertas Upwork, Contra, LinkedIn) y generación de propuestas.
+
+## Descripción del Proyecto
+Horizon Deck ("Horizon") es una herramienta interna (Dashboard) construida con Next.js + Convex. Toma la descripción de una oferta de trabajo, la evalúa usando Gemini/Claude a través del Vercel AI SDK, y le asigna un "Score" (0-10) y un "Tier" paramétricos. Finalmente redacta un "pitch" o propuesta adaptada al estilo de comunicación del usuario.
+
+## Enlaces a Documentación Clave
+
+- [AGENTS.md](./AGENTS.md): Reglas de interacción y sistema de creencias para la IA actuando sobre este repositorio.
+- [CONTEXT.md](./CONTEXT.md): Protocolo de estado actual y transferencia fluida de contexto entre sesiones.
+- [/convex/README.md](./convex/README.md): Documentación sobre la arquitectura e implementación de la DB (Convex).
+- [/src/lib/schema.ts](./src/lib/schema.ts): El esquema de Zod que valida qué estructura JSON deben retornar las IAs al analizar una oferta.
+- [/src/app/api/analyze/route.ts](./src/app/api/analyze/route.ts): El corazón (Ruta del API) donde se inyecta el `systemPrompt` (del frontend) y se invoca la generación de texto estructurado.
+
+## Estructura Principal
+- `src/app/` -> App Router de Next.js (lógica de frontend, rutas).
+- `src/components/` -> Componentes de React (Usa shadcn/ui).
+- `src/lib/` -> Utilidades (Settings por defecto, schema de zod, helper de parseo).
+- `convex/` -> Definición de tablas (`settings`, `analysis`, `vault`) y mutaciones/queries.
+
+*Generado siguiendo el estándar llmstxt.org*
