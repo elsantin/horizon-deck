@@ -52,6 +52,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import ReactMarkdown from "react-markdown";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings";
+import { exportBackup, parseBackupFile } from "@/lib/dataManager";
+import type { BackupAnalysis, BackupVaultItem } from "@/lib/dataManager";
 import type { HorizonSettings, ModelId } from "@/lib/settings";
 import { AnalysisModal } from "@/components/AnalysisModal";
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
@@ -193,8 +195,14 @@ export default function Home() {
   const [archivoView, setArchivoView] = useState<"card" | "list">("card");
   const [archivoSort, setArchivoSort] = useState<"score" | "date">("date");
   const [settingsTab, setSettingsTab] = useState<
-    "ia" | "perfil" | "pitch" | "vault"
+    "ia" | "perfil" | "pitch" | "vault" | "datos"
   >("ia");
+
+  // Estado del sistema de backup/restore
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
+  const [pendingBackup, setPendingBackup] = useState<import("@/lib/dataManager").BackupPayload | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Convex Data
   const vaultItems = useQuery(api.userConfig.getVault) || [];
@@ -202,6 +210,7 @@ export default function Home() {
   const removeVaultItem = useMutation(api.userConfig.removeVaultItem);
   const dbAnalysis = useQuery(api.analysis.getAnalysis) || [];
   const saveAnalysis = useMutation(api.analysis.saveAnalysis);
+  const upsertAnalysis = useMutation(api.analysis.upsertAnalysis);
   const removeAnalysis = useMutation(api.analysis.removeAnalysis);
   const toggleApplied = useMutation(api.analysis.toggleApplied);
 
@@ -250,6 +259,101 @@ export default function Home() {
       localStorage.setItem("horizon-oferta", oferta);
     }
   }, [oferta]);
+
+  // ----------------------------------------------------------------
+  // Handlers de Backup / Restore
+  // ----------------------------------------------------------------
+
+  const handleExportBackup = () => {
+    const analysisPayload: BackupAnalysis[] = dbAnalysis
+      .filter((a: any) => a.horizonId)
+      .map((a: any) => ({
+        horizonId: a.horizonId!,
+        score: a.score,
+        cargo: a.cargo,
+        empresa: a.empresa,
+        pago: a.pago,
+        esfuerzo: a.esfuerzo,
+        tier: a.tier,
+        resumen_ejecutivo: a.resumen_ejecutivo,
+        analisis_estrategico_markdown: a.analisis_estrategico_markdown,
+        propuesta_markdown: a.propuesta_markdown,
+        createdAt: a.createdAt,
+        applied: a.applied,
+        postedAt: a.postedAt,
+        jobLink: a.jobLink,
+        companyLink: a.companyLink,
+      }));
+
+    const vaultPayload: BackupVaultItem[] = vaultItems.map((v: any) => ({
+      label: v.label,
+      value: v.value,
+      type: v.type,
+      createdAt: v.createdAt,
+    }));
+
+    exportBackup(analysisPayload, vaultPayload, settings);
+    toast.success(`Backup exportado — ${analysisPayload.length} análisis`);
+  };
+
+  const handleFileSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Limpiar el input para que el mismo archivo se pueda reimportar
+    e.target.value = "";
+    try {
+      const backup = await parseBackupFile(file);
+      setPendingBackup(backup);
+      setIsImportConfirmOpen(true);
+    } catch (err: any) {
+      toast.error(err.message ?? "Error al leer el archivo de backup");
+    }
+  };
+
+  const handleImportConfirm = async () => {
+    if (!pendingBackup) return;
+    setIsImporting(true);
+    try {
+      let inserted = 0;
+      let updated = 0;
+      for (const item of pendingBackup.analysis) {
+        if (!item.horizonId) continue; // Skips docs sin ID (serán insertados sin merge)
+        const existing = dbAnalysis.find(
+          (a: any) => a.horizonId === item.horizonId,
+        );
+        await upsertAnalysis({
+          horizonId: item.horizonId,
+          score: item.score,
+          cargo: item.cargo,
+          empresa: item.empresa,
+          pago: item.pago,
+          esfuerzo: item.esfuerzo,
+          tier: item.tier,
+          resumen_ejecutivo: item.resumen_ejecutivo,
+          analisis_estrategico_markdown: item.analisis_estrategico_markdown,
+          propuesta_markdown: item.propuesta_markdown,
+          createdAt: item.createdAt,
+          applied: item.applied,
+          postedAt: item.postedAt,
+          jobLink: item.jobLink,
+          companyLink: item.companyLink,
+        });
+        if (existing) updated++;
+        else inserted++;
+      }
+      toast.success(
+        `Backup restaurado — ${inserted} nuevos, ${updated} actualizados`,
+      );
+    } catch (err: any) {
+      toast.error("Error al importar: " + (err.message ?? ""));
+    } finally {
+      setIsImporting(false);
+      setIsImportConfirmOpen(false);
+      setPendingBackup(null);
+    }
+  };
 
   // ----------------------------------------------------------------
   // Handlers
@@ -1312,13 +1416,14 @@ export default function Home() {
             className="flex-1 flex flex-col min-h-0 data-[state=active]:flex data-[state=inactive]:hidden"
           >
             {/* Mini-tabs de navegación */}
-            <div className="flex items-center gap-1 border-b border-zinc-800 pb-0 shrink-0 mb-4">
-              {(["ia", "perfil", "pitch", "vault"] as const).map((tab) => {
+            <div className="flex items-center gap-1 border-b border-zinc-800 pb-0 shrink-0 mb-4 flex-wrap">
+              {(["ia", "perfil", "pitch", "vault", "datos"] as const).map((tab) => {
                 const labels = {
                   ia: "🤖 IA",
                   perfil: "👤 Perfil",
                   pitch: "✉️ Pitch",
                   vault: "🗄️ Vault",
+                  datos: "💾 Datos",
                 };
                 return (
                   <button
@@ -1590,6 +1695,77 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {/* ── DATOS ── */}
+              {settingsTab === "datos" && (
+                <div className="space-y-6 pb-4">
+                  {/* Input file oculto — activado vía ref */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                  />
+
+                  {/* Sección Export */}
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-orange-400">
+                        Exportar Backup
+                      </h3>
+                      <p className="text-xs text-zinc-500">
+                        Descarga un archivo{" "}
+                        <code className="rounded bg-zinc-800 px-1 text-orange-400">.json</code>{" "}
+                        con todos tus análisis y configuración actual.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <span className="font-mono">{dbAnalysis.length} análisis</span>
+                        <span>·</span>
+                        <span className="font-mono">{vaultItems.length} vault items</span>
+                      </div>
+                      <Button
+                        onClick={handleExportBackup}
+                        disabled={dbAnalysis.length === 0}
+                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-2"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                        Exportar Backup
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Separator className="bg-zinc-800" />
+
+                  {/* Sección Import */}
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-semibold uppercase tracking-wider text-orange-400">
+                        Importar Backup
+                      </h3>
+                      <p className="text-xs text-zinc-500">
+                        Restaura tus datos desde un archivo de backup. Los análisis
+                        existentes se actualizarán, los nuevos se agregarán.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+                      <Button
+                        onClick={() => fileInputRef.current?.click()}
+                        variant="outline"
+                        className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 gap-2"
+                      >
+                        <ArrowUp className="h-4 w-4 rotate-90" />
+                        Importar Backup
+                      </Button>
+                      <p className="mt-2 text-center text-[10px] text-zinc-600">
+                        Solo archivos .json generados por Horizon Deck
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Botón guardar fijo al fondo */}
@@ -1616,6 +1792,52 @@ export default function Home() {
       </main>
 
       {/* ======= DIALOG GLOBAL — Accesible desde cualquier tab ======= */}
+      {/* DIALOG CONFIRMACIÓN IMPORT BACKUP */}
+      <Dialog open={isImportConfirmOpen} onOpenChange={(open) => {
+        if (!isImporting) {
+          setIsImportConfirmOpen(open);
+          if (!open) setPendingBackup(null);
+        }
+      }}>
+        <DialogContent className="max-w-md border-zinc-800 bg-zinc-950 text-zinc-200">
+          <DialogHeader>
+            <DialogTitle>¿Restaurar backup?</DialogTitle>
+            <DialogDescription className="text-zinc-500 mt-2">
+              Los análisis existentes serán actualizados con los datos del archivo.
+              Los análisis nuevos se agregarán. Esta acción no se puede deshacer fácilmente.
+              {pendingBackup && (
+                <span className="mt-2 block font-mono text-xs text-zinc-400">
+                  {pendingBackup.analysis.length} análisis en el archivo ·{" "}
+                  exportado el{" "}
+                  {new Date(pendingBackup.exportedAt).toLocaleDateString()}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => { setIsImportConfirmOpen(false); setPendingBackup(null); }}
+              disabled={isImporting}
+              className="text-zinc-400"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleImportConfirm}
+              disabled={isImporting}
+              className="bg-orange-600 hover:bg-orange-500 text-white"
+            >
+              {isImporting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Restaurando...</>
+              ) : (
+                "Restaurar"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* DIALOG MANUAL IMPORT */}
       <Dialog open={isManualImportOpen} onOpenChange={setIsManualImportOpen}>
         <DialogContent className="max-w-2xl border-zinc-800 bg-zinc-950 text-zinc-200">

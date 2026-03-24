@@ -17,6 +17,7 @@ export default defineSchema({
     postedAt: v.optional(v.string()), // Real date of the post
     jobLink: v.optional(v.string()),
     companyLink: v.optional(v.string()),
+    horizonId: v.optional(v.string()), // UUID estable para backup/restore
   }),
   
   messages: defineTable({
