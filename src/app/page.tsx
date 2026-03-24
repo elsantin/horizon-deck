@@ -342,12 +342,14 @@ export default function Home() {
 
       // 2. Restaurar Analysis (Replace Total)
       if (pendingBackup.analysis) {
-        await importBackupMutation({ analyses: pendingBackup.analysis as any });
+        const cleanAnalysis = pendingBackup.analysis.map(({ _id, _creationTime, ...rest }: any) => rest);
+        await importBackupMutation({ analyses: cleanAnalysis as any });
       }
 
       // 3. Restaurar Vault (Replace Total)
       if (pendingBackup.vault) {
-        await importVaultMutation({ items: pendingBackup.vault as any });
+        const cleanVault = pendingBackup.vault.map(({ _id, _creationTime, ...rest }: any) => rest);
+        await importVaultMutation({ items: cleanVault as any });
       }
 
       toast.success(
@@ -1867,10 +1869,52 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
 
+                  {/* Sección Snapshot (Solo si existe snapshotDate) */}
+                  {snapshotDate && (
+                  <>
+                    <Separator className="bg-zinc-800" />
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-emerald-400">
+                          Snapshot de Emergencia
+                        </h3>
+                        <p className="text-xs text-zinc-500">
+                          Respaldo automático local del <strong>{new Date(snapshotDate).toLocaleString()}</strong>
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            const { payload } = getEmergencySnapshot();
+                            if (payload) {
+                              setPendingBackup(payload);
+                              setIsImportConfirmOpen(true);
+                            }
+                          }}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white gap-2"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                          Restaurar Snapshot
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            clearEmergencySnapshot();
+                            setSnapshotDate(null);
+                          }}
+                          variant="destructive"
+                          size="icon"
+                          className="bg-zinc-800 hover:bg-red-500/10 text-zinc-500 hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
             {/* Botón guardar fijo al fondo */}
             <div className="shrink-0 flex items-center justify-between border-t border-zinc-800 pt-3 mt-2">
               <p className="text-xs text-zinc-600">
