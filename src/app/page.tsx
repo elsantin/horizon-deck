@@ -204,6 +204,11 @@ export default function Home() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Estado para gestión Batch (Selección Múltiple)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+
   // Convex Data
   const vaultItems = useQuery(api.userConfig.getVault) || [];
   const addVaultItem = useMutation(api.userConfig.addVaultItem);
@@ -339,6 +344,105 @@ export default function Home() {
       setPendingBackup(null);
     }
   };
+
+  // ----------------------------------------------------------------
+  // Handlers Batch / Multi-Select
+  // ----------------------------------------------------------------
+
+  const handleCardClick = (e: React.MouseEvent, item: any, currentList: any[]) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.stopPropagation();
+      const newSet = new Set(selectedIds);
+      if (newSet.has(item._id)) newSet.delete(item._id);
+      else newSet.add(item._id);
+      setSelectedIds(newSet);
+      setLastSelectedId(item._id);
+      return;
+    }
+    
+    if (e.shiftKey && lastSelectedId) {
+      e.stopPropagation();
+      const currentIdx = currentList.findIndex((i) => i._id === item._id);
+      const lastIdx = currentList.findIndex((i) => i._id === lastSelectedId);
+      
+      if (currentIdx !== -1 && lastIdx !== -1) {
+        const min = Math.min(currentIdx, lastIdx);
+        const max = Math.max(currentIdx, lastIdx);
+        const newSet = new Set(selectedIds);
+        for (let i = min; i <= max; i++) {
+          newSet.add(currentList[i]._id);
+        }
+        setSelectedIds(newSet);
+        setLastSelectedId(item._id);
+      }
+      return;
+    }
+
+    // Sin modificadores: si hay selección activa, la limpiamos y no abrimos modal
+    if (selectedIds.size > 0) {
+      e.stopPropagation();
+      setSelectedIds(new Set());
+      setLastSelectedId(null);
+      return;
+    }
+
+    // Comportamiento normal (abrir modal)
+    setCurrentAnalysis(item);
+    setIsModalOpen(true);
+  };
+
+  const handleBatchDelete = async () => {
+    setIsBatchDeleteModalOpen(false);
+    // Eliminar todos los IDs seleccionados
+    const promises = Array.from(selectedIds).map((id) => removeAnalysis({ id: id as any }));
+    try {
+      await Promise.all(promises);
+      toast.success(`${selectedIds.size} análisis eliminados`);
+    } catch (err) {
+      toast.error("Hubo un error al eliminar algunos análisis");
+    } finally {
+      setSelectedIds(new Set());
+      setLastSelectedId(null);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cancelar selección con Escape
+      if (e.key === "Escape" && selectedIds.size > 0) {
+        setSelectedIds(new Set());
+        setLastSelectedId(null);
+      }
+      // Eliminar con Supr/Delete
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.size > 0) {
+        // Evitar disparar si el usuario está escribiendo en un input o textarea
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+        setIsBatchDeleteModalOpen(true);
+      }
+    };
+    
+    // Escuchar clic fuera de las cards para cancelar selección
+    const handleGlobalClick = (e: MouseEvent) => {
+      // Ignoramos si el clic originó dentro de la floating bar
+      const target = e.target as HTMLElement;
+      if (selectedIds.size > 0 && !target.closest('.card-selectable') && !target.closest('.batch-floating-bar') && !target.closest('[role="dialog"]')) {
+        setSelectedIds(new Set());
+        setLastSelectedId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("click", handleGlobalClick);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("click", handleGlobalClick);
+    };
+  }, [selectedIds]);
 
   // ----------------------------------------------------------------
   // Handlers
@@ -811,12 +915,10 @@ export default function Home() {
                             return (
                               <Card
                                 key={`${item._id}-${idx}`}
-                                onClick={() => {
-                                  setCurrentAnalysis(item);
-                                  setIsModalOpen(true);
-                                }}
-                                className={`flex flex-col h-full group relative cursor-pointer overflow-hidden border-zinc-800 bg-zinc-900/40 transition-all duration-500 hover:border-orange-500/50 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-950/20 ${getCardBorder(item.score)}
-                                  [transform-style:preserve-3d] hover:[transform:translateZ(20px)_rotateX(2deg)]`}
+                                onClick={(e) => handleCardClick(e, item, radarItems)}
+                                className={`flex flex-col h-full group relative cursor-pointer overflow-hidden border-zinc-800 bg-zinc-900/40 transition-all duration-500 hover:border-orange-500/50 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-950/20 card-selectable ${getCardBorder(item.score)} ${
+                                  selectedIds.has(item._id) ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-zinc-950 bg-orange-500/10" : ""
+                                } [transform-style:preserve-3d] hover:[transform:translateZ(20px)_rotateX(2deg)]`}
                               >
                                 <CardHeader className="pb-2">
                                   <div className="flex items-start justify-between">
@@ -902,11 +1004,10 @@ export default function Home() {
                         return (
                           <div
                             key={item._id}
-                            className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/60 transition-colors cursor-pointer"
-                            onClick={() => {
-                              setCurrentAnalysis(item);
-                              setIsModalOpen(true);
-                            }}
+                            className={`flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/60 transition-colors cursor-pointer card-selectable ${
+                              selectedIds.has(item._id) ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-zinc-950 bg-orange-500/10" : ""
+                            }`}
+                            onClick={(e) => handleCardClick(e, item, dashboardListItems)}
                           >
                             <div className="flex items-center gap-3 overflow-hidden flex-1">
                               <div
@@ -1777,6 +1878,64 @@ export default function Home() {
       </main>
 
       {/* ======= DIALOG GLOBAL — Accesible desde cualquier tab ======= */}
+
+      {/* BARRA FLOTANTE BATCH DELETE */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-zinc-900 border border-zinc-700 shadow-2xl rounded-full px-6 py-3 animate-in fade-in slide-in-from-bottom-5 batch-floating-bar">
+          <span className="text-sm font-medium text-zinc-200">
+            {selectedIds.size} {selectedIds.size === 1 ? "seleccionado" : "seleccionados"}
+          </span>
+          <div className="h-5 w-px bg-zinc-700" />
+          <Button
+            onClick={() => setIsBatchDeleteModalOpen(true)}
+            variant="destructive"
+            size="sm"
+            className="rounded-full shadow-lg bg-red-600 hover:bg-red-500"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Eliminar
+          </Button>
+          <Button
+            onClick={() => {
+              setSelectedIds(new Set());
+              setLastSelectedId(null);
+            }}
+            variant="ghost"
+            size="icon"
+            className="rounded-full h-8 w-8 text-zinc-400 hover:text-zinc-200"
+          >
+            ✖
+          </Button>
+        </div>
+      )}
+
+      {/* DIALOG CONFIRMACIÓN BATCH DELETE */}
+      <Dialog open={isBatchDeleteModalOpen} onOpenChange={setIsBatchDeleteModalOpen}>
+        <DialogContent className="max-w-md border-zinc-800 bg-zinc-950 text-zinc-200">
+          <DialogHeader>
+            <DialogTitle>¿Eliminar {selectedIds.size} análisis?</DialogTitle>
+            <DialogDescription className="text-zinc-500 mt-2">
+              Esta acción no se puede deshacer. Los elementos seleccionados serán eliminados permanentemente del sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => setIsBatchDeleteModalOpen(false)}
+              className="text-zinc-400"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBatchDelete}
+              className="bg-red-600 hover:bg-red-500 text-white"
+            >
+              Eliminar {selectedIds.size} elementos
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
       {/* DIALOG CONFIRMACIÓN IMPORT BACKUP */}
       <Dialog open={isImportConfirmOpen} onOpenChange={(open) => {
         if (!isImporting) {

@@ -73,6 +73,6 @@ export const horizonSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Link a la empresa. IMPORTANTE: NO INVENTES DOMINIOS NI LINKS. Si no hay link explícito en el texto, omítelo/devuelve null.",
+      "URL del sitio web o perfil de la empresa/cliente. SOLO incluir si hay una URL explícita y real en el texto de la oferta. Si no existe ninguna URL real, devolver null o string vacío. NUNCA inventar, construir ni asumir una URL a partir del nombre de la empresa o cualquier otro dato.",
     ),
 });
