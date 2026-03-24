@@ -321,6 +321,19 @@ export default function Home() {
 
   const handleImportConfirm = async () => {
     if (!pendingBackup) return;
+
+    // 0. Snapshot silencioso ANTES de cualquier operación destructiva
+    try {
+      createEmergencySnapshot(
+        (dbAnalysis || []) as any,
+        (vaultItems || []) as any,
+        settings
+      );
+      setSnapshotDate(new Date().toISOString());
+    } catch (e) {
+      console.warn("Fallo al crear snapshot pre-importación", e);
+    }
+
     setIsImporting(true);
     try {
       // 1. Restaurar Settings
