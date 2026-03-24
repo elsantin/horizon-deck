@@ -52,7 +52,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import ReactMarkdown from "react-markdown";
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "@/lib/settings";
-import { exportBackup, parseBackupFile } from "@/lib/dataManager";
+import { exportBackup, parseBackupFile, createEmergencySnapshot, getEmergencySnapshot, clearEmergencySnapshot } from "@/lib/dataManager";
 import type { BackupAnalysis, BackupVaultItem } from "@/lib/dataManager";
 import type { HorizonSettings, ModelId } from "@/lib/settings";
 import { AnalysisModal } from "@/components/AnalysisModal";
@@ -244,6 +244,8 @@ export default function Home() {
     toast.success(`${label} copiado al portapapeles`);
   };
 
+  const [snapshotDate, setSnapshotDate] = useState<string | null>(null);
+
   // Cargar settings e historial del localStorage al iniciar
   useEffect(() => {
     setSettings(loadSettings());
@@ -257,6 +259,8 @@ export default function Home() {
     if (savedOferta) {
       setOferta(savedOferta);
     }
+    const { date } = getEmergencySnapshot();
+    if (date) setSnapshotDate(date);
   }, []);
 
   // Guardar la oferta en localStorage a medida que cambia
@@ -1958,6 +1962,9 @@ export default function Home() {
                 </span>
               )}
             </DialogDescription>
+            <div className="mt-4 text-sm text-emerald-500 font-medium">
+              🛡️ Se guardará un snapshot de emergencia antes de reemplazar. Podrás revertir desde Settings → Datos si algo sale mal.
+            </div>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-4">
             <Button

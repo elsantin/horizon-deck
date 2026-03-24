@@ -109,3 +109,67 @@ export async function parseBackupFile(file: File): Promise<BackupPayload> {
 
   return data as BackupPayload;
 }
+
+// ----------------------------------------------------------------
+// Emergency Snapshot (localStorage)
+// ----------------------------------------------------------------
+
+const SNAPSHOT_KEY = "horizon_emergency_snapshot";
+const SNAPSHOT_DATE_KEY = "horizon_emergency_snapshot_date";
+
+/**
+ * Guarda el estado actual en localStorage como un snapshot a prueba de fallos
+ * antes de realizar importaciones destructivas (Replace Total).
+ */
+export function createEmergencySnapshot(
+  analyses: BackupAnalysis[],
+  vaultItems: BackupVaultItem[],
+  settings: BackupSettings,
+): void {
+  try {
+    const payload: BackupPayload = {
+      exportedAt: new Date().toISOString(),
+      version: "1.0",
+      analysis: analyses,
+      vault: vaultItems,
+      settings,
+    };
+
+    // Vaciar previamente para liberar si hubiera un snapshot viejo pesado
+    localStorage.removeItem(SNAPSHOT_KEY);
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(payload));
+    localStorage.setItem(SNAPSHOT_DATE_KEY, payload.exportedAt);
+  } catch (err) {
+    // Si la cuota de localStorage se excede u ocurre otro error, fallamos silenciosamente
+    console.warn("No se pudo crear el snapshot de emergencia:", err);
+  }
+}
+
+/**
+ * Retorna el snapshot guardado en localStorage, si existe y es válido.
+ */
+export function getEmergencySnapshot(): {
+  date: string | null;
+  payload: BackupPayload | null;
+} {
+  try {
+    const date = localStorage.getItem(SNAPSHOT_DATE_KEY);
+    const dataString = localStorage.getItem(SNAPSHOT_KEY);
+
+    if (!dataString) return { date: null, payload: null };
+
+    const payload = JSON.parse(dataString);
+    return { date, payload };
+  } catch (err) {
+    console.warn("El snapshot de emergencia está corrupto:", err);
+    return { date: null, payload: null };
+  }
+}
+
+/**
+ * Elimina cualquier snapshot almacenado.
+ */
+export function clearEmergencySnapshot(): void {
+  localStorage.removeItem(SNAPSHOT_KEY);
+  localStorage.removeItem(SNAPSHOT_DATE_KEY);
+}
