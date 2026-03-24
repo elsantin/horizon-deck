@@ -10,6 +10,8 @@ Horizon no es solo una base de datos; es un motor de inteligencia que aplica la 
 - ⚡ **Bypass Mode:** Importación manual de JSON para optimización de costos de API.
 - 🔍 **Extracción Inteligente:** Identifica automáticamente `posted_at`, `job_link` y `company_link`.
 - 📋 **CRM Operativo:** Marca ofertas como "Applied" y gestiónalas en el archivo histórico.
+- 💾 **Data Management Segura:** Export/Import de Backups en JSON, y auto-snapshots de emergencia (Estrategia Replace Total).
+- 🖱️ **Gestión Batch:** Selección múltiple (Ctrl+Click, Shift+Click) para eliminación en lote dinámica.
 - 🎨 **Estética Premium:** Tema oscuro con acentos cinéticos y tipografía moderna.
 
 ## 🛠️ Stack Tecnológico
