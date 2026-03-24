@@ -1,6 +1,6 @@
 /**
  * dataManager.ts
- * Módulo cliente para exportar e importar backups de Horizon Deck.
+ * Módulo cliente para exportar e importar backups de Horizon Deck (Replace Total).
  * NOTA: Solo se ejecuta en el navegador — NO importar desde el servidor.
  */
 
@@ -9,7 +9,6 @@
 // ----------------------------------------------------------------
 
 export type BackupAnalysis = {
-  horizonId: string;
   score: number;
   cargo: string;
   empresa: string;

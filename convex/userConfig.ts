@@ -30,3 +30,28 @@ export const removeVaultItem = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const importVault = mutation({
+  args: {
+    items: v.array(
+      v.object({
+        label: v.string(),
+        value: v.string(),
+        type: v.union(v.literal("link"), v.literal("text")),
+        createdAt: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    // 1. Borrar todo el vault actual
+    const all = await ctx.db.query("userConfig").collect();
+    for (const doc of all) {
+      await ctx.db.delete(doc._id);
+    }
+
+    // 2. Insertar los nuevos
+    for (const item of args.items) {
+      await ctx.db.insert("userConfig", item);
+    }
+  },
+});

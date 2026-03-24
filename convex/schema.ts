@@ -8,7 +8,11 @@ export default defineSchema({
     empresa: v.string(),
     pago: v.string(),
     esfuerzo: v.union(v.literal("Bajo"), v.literal("Medio"), v.literal("Alto")),
-    tier: v.union(v.literal("Tier 1"), v.literal("Tier 2"), v.literal("Tier 3")),
+    tier: v.union(
+      v.literal("Tier 1"),
+      v.literal("Tier 2"),
+      v.literal("Tier 3"),
+    ),
     resumen_ejecutivo: v.string(),
     analisis_estrategico_markdown: v.string(),
     propuesta_markdown: v.string(),
@@ -17,12 +21,16 @@ export default defineSchema({
     postedAt: v.optional(v.string()), // Real date of the post
     jobLink: v.optional(v.string()),
     companyLink: v.optional(v.string()),
-    horizonId: v.optional(v.string()), // UUID estable para backup/restore
   }),
-  
+
   messages: defineTable({
     sessionId: v.string(),
-    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system"), v.literal("data")),
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("system"),
+      v.literal("data"),
+    ),
     content: v.string(),
     createdAt: v.number(),
   }).index("by_session", ["sessionId"]),

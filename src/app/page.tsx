@@ -210,9 +210,10 @@ export default function Home() {
   const removeVaultItem = useMutation(api.userConfig.removeVaultItem);
   const dbAnalysis = useQuery(api.analysis.getAnalysis) || [];
   const saveAnalysis = useMutation(api.analysis.saveAnalysis);
-  const upsertAnalysis = useMutation(api.analysis.upsertAnalysis);
   const removeAnalysis = useMutation(api.analysis.removeAnalysis);
   const toggleApplied = useMutation(api.analysis.toggleApplied);
+  const importBackupMutation = useMutation(api.analysis.importBackup);
+  const importVaultMutation = useMutation(api.userConfig.importVault);
 
   const [newVaultLabel, setNewVaultLabel] = useState("");
   const [newVaultValue, setNewVaultValue] = useState("");
@@ -265,25 +266,22 @@ export default function Home() {
   // ----------------------------------------------------------------
 
   const handleExportBackup = () => {
-    const analysisPayload: BackupAnalysis[] = dbAnalysis
-      .filter((a: any) => a.horizonId)
-      .map((a: any) => ({
-        horizonId: a.horizonId!,
-        score: a.score,
-        cargo: a.cargo,
-        empresa: a.empresa,
-        pago: a.pago,
-        esfuerzo: a.esfuerzo,
-        tier: a.tier,
-        resumen_ejecutivo: a.resumen_ejecutivo,
-        analisis_estrategico_markdown: a.analisis_estrategico_markdown,
-        propuesta_markdown: a.propuesta_markdown,
-        createdAt: a.createdAt,
-        applied: a.applied,
-        postedAt: a.postedAt,
-        jobLink: a.jobLink,
-        companyLink: a.companyLink,
-      }));
+    const analysisPayload: BackupAnalysis[] = dbAnalysis.map((a: any) => ({
+      score: a.score,
+      cargo: a.cargo,
+      empresa: a.empresa,
+      pago: a.pago,
+      esfuerzo: a.esfuerzo,
+      tier: a.tier,
+      resumen_ejecutivo: a.resumen_ejecutivo,
+      analisis_estrategico_markdown: a.analisis_estrategico_markdown,
+      propuesta_markdown: a.propuesta_markdown,
+      createdAt: a.createdAt,
+      applied: a.applied,
+      postedAt: a.postedAt,
+      jobLink: a.jobLink,
+      companyLink: a.companyLink,
+    }));
 
     const vaultPayload: BackupVaultItem[] = vaultItems.map((v: any) => ({
       label: v.label,
@@ -301,7 +299,7 @@ export default function Home() {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Limpiar el input para que el mismo archivo se pueda reimportar
+    // Limpiar el input para reimportar si es necesario
     e.target.value = "";
     try {
       const backup = await parseBackupFile(file);
@@ -316,35 +314,22 @@ export default function Home() {
     if (!pendingBackup) return;
     setIsImporting(true);
     try {
-      let inserted = 0;
-      let updated = 0;
-      for (const item of pendingBackup.analysis) {
-        if (!item.horizonId) continue; // Skips docs sin ID (serán insertados sin merge)
-        const existing = dbAnalysis.find(
-          (a: any) => a.horizonId === item.horizonId,
-        );
-        await upsertAnalysis({
-          horizonId: item.horizonId,
-          score: item.score,
-          cargo: item.cargo,
-          empresa: item.empresa,
-          pago: item.pago,
-          esfuerzo: item.esfuerzo,
-          tier: item.tier,
-          resumen_ejecutivo: item.resumen_ejecutivo,
-          analisis_estrategico_markdown: item.analisis_estrategico_markdown,
-          propuesta_markdown: item.propuesta_markdown,
-          createdAt: item.createdAt,
-          applied: item.applied,
-          postedAt: item.postedAt,
-          jobLink: item.jobLink,
-          companyLink: item.companyLink,
-        });
-        if (existing) updated++;
-        else inserted++;
+      // 1. Restaurar Settings
+      setSettings(pendingBackup.settings as HorizonSettings);
+      saveSettings(pendingBackup.settings as HorizonSettings);
+
+      // 2. Restaurar Analysis (Replace Total)
+      if (pendingBackup.analysis) {
+        await importBackupMutation({ analyses: pendingBackup.analysis as any });
       }
+
+      // 3. Restaurar Vault (Replace Total)
+      if (pendingBackup.vault) {
+        await importVaultMutation({ items: pendingBackup.vault as any });
+      }
+
       toast.success(
-        `Backup restaurado — ${inserted} nuevos, ${updated} actualizados`,
+        `Backup restaurado (Replace Total) — ${pendingBackup.analysis.length} análisis`,
       );
     } catch (err: any) {
       toast.error("Error al importar: " + (err.message ?? ""));
@@ -1699,7 +1684,7 @@ export default function Home() {
               {/* ── DATOS ── */}
               {settingsTab === "datos" && (
                 <div className="space-y-6 pb-4">
-                  {/* Input file oculto — activado vía ref */}
+                  {/* Input file oculto — activado vía ref */}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1743,11 +1728,11 @@ export default function Home() {
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <h3 className="text-sm font-semibold uppercase tracking-wider text-orange-400">
-                        Importar Backup
+                        Importar Backup (Replace Total)
                       </h3>
                       <p className="text-xs text-zinc-500">
-                        Restaura tus datos desde un archivo de backup. Los análisis
-                        existentes se actualizarán, los nuevos se agregarán.
+                        Restaura tus datos desde un archivo de backup.{" "}
+                        <strong className="text-zinc-300">CUIDADO: Todos los datos actuales serán eliminados y reemplazados.</strong>
                       </p>
                     </div>
                     <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
@@ -1801,15 +1786,16 @@ export default function Home() {
       }}>
         <DialogContent className="max-w-md border-zinc-800 bg-zinc-950 text-zinc-200">
           <DialogHeader>
-            <DialogTitle>¿Restaurar backup?</DialogTitle>
-            <DialogDescription className="text-zinc-500 mt-2">
-              Los análisis existentes serán actualizados con los datos del archivo.
-              Los análisis nuevos se agregarán. Esta acción no se puede deshacer fácilmente.
+            <DialogTitle className="text-red-400">¿Restaurar backup y REEMPLAZAR TODO?</DialogTitle>
+            <DialogDescription className="text-zinc-400 mt-2">
+              <strong className="text-zinc-200 block mb-2">¡ESTA ACCIÓN ES DESTRUCTIVA!</strong>
+              Todos tus análisis y vault items actuales serán borrados y reemplazados 
+              por los que vienen en el archivo. Esto no se puede deshacer.
               {pendingBackup && (
-                <span className="mt-2 block font-mono text-xs text-zinc-400">
-                  {pendingBackup.analysis.length} análisis en el archivo ·{" "}
-                  exportado el{" "}
-                  {new Date(pendingBackup.exportedAt).toLocaleDateString()}
+                <span className="mt-4 block font-mono text-xs text-zinc-500 bg-zinc-900 p-2 rounded border border-zinc-800">
+                  Archivo a restaurar:<br/>
+                  {pendingBackup.analysis.length} análisis · {pendingBackup.vault.length} vault items<br/>
+                  Exportado el: {new Date(pendingBackup.exportedAt).toLocaleDateString()}
                 </span>
               )}
             </DialogDescription>
@@ -1819,19 +1805,19 @@ export default function Home() {
               variant="ghost"
               onClick={() => { setIsImportConfirmOpen(false); setPendingBackup(null); }}
               disabled={isImporting}
-              className="text-zinc-400"
+              className="text-zinc-400 hover:text-zinc-200"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleImportConfirm}
               disabled={isImporting}
-              className="bg-orange-600 hover:bg-orange-500 text-white"
+              className="bg-red-600 hover:bg-red-500 text-white"
             >
               {isImporting ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Restaurando...</>
               ) : (
-                "Restaurar"
+                "Sí, Reemplazar Todo"
               )}
             </Button>
           </div>
@@ -1921,7 +1907,7 @@ export default function Home() {
                   setIsDeleteDialogOpen(false);
                   setIsModalOpen(false);
                   setItemToDelete(null);
-                  
+
                   try {
                     await removeAnalysis({ id: idToDelete });
                     toast.success("Record deleted successfully");
