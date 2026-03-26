@@ -47,6 +47,7 @@ import {
   LayoutGrid,
   MessageSquare,
   Globe,
+  Diamond,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -97,6 +98,8 @@ type HorizonAnalysis = {
   posted_at?: string;
   job_link?: string;
   company_link?: string;
+  favorita?: boolean;
+  seen?: boolean;
 };
 
 type HistoryEntry = {
@@ -109,12 +112,23 @@ type HistoryEntry = {
 // Utilidades de score
 // ----------------------------------------------------------------
 
-const getCardBorder = (score: number) =>
-  score >= 9.0
+const getCardBorder = (item: HorizonAnalysis) => {
+  if (item.applied) return "opacity-40 border-zinc-800 grayscale-[0.8]";
+  if (item.favorita) return "border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.15)]";
+  if (!item.seen) return "ring-1 ring-emerald-500 animate-pulse-slow border-emerald-500/50 bg-emerald-500/5";
+  return item.score >= 9.0
     ? "border-emerald-500/30"
-    : score >= 8.0
+    : item.score >= 8.0
       ? "border-orange-500/30"
       : "border-zinc-700/40";
+};
+
+const getListBorder = (item: HorizonAnalysis) => {
+  if (item.applied) return "opacity-40 border-zinc-800 grayscale-[0.8]";
+  if (item.favorita) return "border-orange-500/50 shadow-[inset_2px_0_0_rgba(249,115,22,1)]";
+  if (!item.seen) return "border-emerald-500/50 bg-emerald-500/5 font-semibold";
+  return "border-zinc-800";
+};
 
 const getTierStyle = (tier: string) => {
   if (tier?.includes("Tier 1"))
@@ -217,6 +231,8 @@ export default function Home() {
   const saveAnalysis = useMutation(api.analysis.saveAnalysis);
   const removeAnalysis = useMutation(api.analysis.removeAnalysis);
   const toggleApplied = useMutation(api.analysis.toggleApplied);
+  const toggleFavorite = useMutation(api.analysis.toggleFavorite);
+  const markAsSeen = useMutation(api.analysis.markAsSeen);
   const importBackupMutation = useMutation(api.analysis.importBackup);
   const importVaultMutation = useMutation(api.userConfig.importVault);
 
@@ -290,6 +306,8 @@ export default function Home() {
       postedAt: a.postedAt,
       jobLink: a.jobLink,
       companyLink: a.companyLink,
+      favorita: a.favorita,
+      seen: a.seen,
     }));
 
     const vaultPayload: BackupVaultItem[] = vaultItems.map((v: any) => ({
@@ -406,6 +424,9 @@ export default function Home() {
     }
 
     // Comportamiento normal (abrir modal)
+    if (!item.seen) {
+      markAsSeen({ id: item._id });
+    }
     setCurrentAnalysis(item);
     setIsModalOpen(true);
   };
@@ -523,6 +544,8 @@ export default function Home() {
         postedAt: data.posted_at,
         jobLink: data.job_link,
         companyLink: data.company_link,
+        favorita: false,
+        seen: true, // Auto-visto al crearlo
       });
 
       toast.success("Análisis guardado en el Dashboard");
@@ -590,6 +613,8 @@ export default function Home() {
         postedAt: parsed.posted_at,
         jobLink: parsed.job_link,
         companyLink: parsed.company_link,
+        favorita: parsed.favorita ?? false,
+        seen: parsed.seen ?? true,
       });
 
       toast.success("Análisis guardado en el Dashboard");
@@ -643,6 +668,10 @@ export default function Home() {
   let radarItems = dbAnalysis
     .filter((item: any) => !item.applied)
     .sort((a: any, b: any) => {
+      // Priorizar favoritas en el dashboard
+      if (a.favorita && !b.favorita) return -1;
+      if (!a.favorita && b.favorita) return 1;
+
       if (radarSort === "score") return b.score - a.score;
       return (
         parseDate(b.postedAt, b._creationTime) -
@@ -651,6 +680,10 @@ export default function Home() {
     });
 
   const archiveItems = [...dbAnalysis].sort((a: any, b: any) => {
+    // También priorizar favoritas en el archivo
+    if (a.favorita && !b.favorita) return -1;
+    if (!a.favorita && b.favorita) return 1;
+
     if (archivoSort === "score") return b.score - a.score;
     return (
       parseDate(b.postedAt, b._creationTime) -
@@ -935,7 +968,7 @@ export default function Home() {
                               <Card
                                 key={`${item._id}-${idx}`}
                                 onClick={(e) => handleCardClick(e, item, radarItems)}
-                                className={`flex flex-col h-full group relative cursor-pointer overflow-hidden border-zinc-800 bg-zinc-900/40 transition-all duration-500 hover:border-orange-500/50 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-950/20 card-selectable ${getCardBorder(item.score)} ${
+                                className={`flex flex-col h-full group relative cursor-pointer overflow-hidden bg-zinc-900/40 border transition-all duration-500 hover:border-orange-500/50 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-950/20 card-selectable ${getCardBorder({ ...item, score: item.score || 0 })} ${
                                   selectedIds.has(item._id) ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-zinc-950 bg-orange-500/10" : ""
                                 } [transform-style:preserve-3d] hover:[transform:translateZ(20px)_rotateX(2deg)]`}
                               >
@@ -967,11 +1000,19 @@ export default function Home() {
                                         {item.empresa}
                                       </CardDescription>
                                     </div>
-                                    <span
-                                      className={`shrink-0 text-2xl font-black tabular-nums ${getTierStyle(item.tier).text}`}
-                                    >
-                                      {item.score?.toFixed(1)}
-                                    </span>
+                                    <div className="flex flex-col items-end shrink-0 gap-1.5 min-w-[34px]">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleFavorite({ id: item._id }); }}
+                                        className="p-1 -mt-1 -mr-1 hover:bg-zinc-800 rounded-full transition-colors z-10"
+                                      >
+                                        <Diamond className={`h-4 w-4 ${item.favorita ? "text-orange-500 fill-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]" : "text-zinc-600 hover:text-orange-400"}`} />
+                                      </button>
+                                      <span
+                                        className={`text-2xl font-black tabular-nums leading-none ${getTierStyle(item.tier).text}`}
+                                      >
+                                        {item.score?.toFixed(1)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </CardHeader>
                                 <CardContent className="pt-0 flex flex-col flex-1">
@@ -1023,16 +1064,21 @@ export default function Home() {
                         return (
                           <div
                             key={item._id}
-                            className={`flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/60 transition-colors cursor-pointer card-selectable ${
+                            className={`flex items-center justify-between p-3 rounded-lg border bg-zinc-900/50 hover:bg-zinc-900/60 transition-colors cursor-pointer card-selectable ${getListBorder({ ...item, score: item.score || 0 })} ${
                               selectedIds.has(item._id) ? "ring-2 ring-orange-500 ring-offset-2 ring-offset-zinc-950 bg-orange-500/10" : ""
                             }`}
                             onClick={(e) => handleCardClick(e, item, dashboardListItems)}
                           >
                             <div className="flex items-center gap-3 overflow-hidden flex-1">
-                              <div
-                                className={`shrink-0 text-lg font-bold tabular-nums w-10 text-center ${getTierStyle(item.tier).text}`}
-                              >
-                                {item.score?.toFixed(1)}
+                              <div className="flex flex-col items-center justify-center gap-1 w-10 shrink-0">
+                                <button className="z-10" onClick={(e) => { e.stopPropagation(); toggleFavorite({ id: item._id }); }}>
+                                  <Diamond className={`h-3.5 w-3.5 transition-colors ${item.favorita ? "text-orange-500 fill-orange-500" : "text-zinc-600 hover:text-orange-400"}`} />
+                                </button>
+                                <div
+                                  className={`text-lg leading-none font-bold tabular-nums text-center ${getTierStyle(item.tier).text}`}
+                                >
+                                  {item.score?.toFixed(1)}
+                                </div>
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 mb-0.5">
@@ -1167,11 +1213,12 @@ export default function Home() {
                         return (
                           <Card
                             key={`${item._id}-${idx}`}
-                            className={`group relative cursor-pointer overflow-hidden bg-zinc-900/40 transition-all duration-500 hover:border-orange-500/50 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-950/20 [transform-style:preserve-3d] hover:[transform:translateZ(20px)_rotateX(2deg)] ${tierStyle.badge.includes("emerald") ? "border-emerald-500/20" : tierStyle.badge.includes("amber") ? "border-amber-500/20" : "border-red-500/20"}`}
+                            className={`group relative cursor-pointer overflow-hidden bg-zinc-900/40 border transition-all duration-500 hover:border-orange-500/50 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-950/20 [transform-style:preserve-3d] hover:[transform:translateZ(20px)_rotateX(2deg)] ${getCardBorder({ ...item, score: item.score || 0 })}`}
                           >
                             <CardHeader
                               className="pb-2"
                               onClick={() => {
+                                if (!item.seen) markAsSeen({ id: item._id });
                                 setCurrentAnalysis(item);
                                 setIsModalOpen(true);
                               }}
@@ -1203,11 +1250,19 @@ export default function Home() {
                                     {item.empresa}
                                   </CardTitle>
                                 </div>
-                                <span
-                                  className={`shrink-0 text-2xl font-black tabular-nums ${getTierStyle(item.tier).text}`}
-                                >
-                                  {item.score?.toFixed(1)}
-                                </span>
+                                <div className="flex flex-col items-end shrink-0 gap-1.5 min-w-[34px]">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toggleFavorite({ id: item._id }); }}
+                                    className="p-1 -mt-1 -mr-1 hover:bg-zinc-800 rounded-full transition-colors z-10"
+                                  >
+                                    <Diamond className={`h-4 w-4 ${item.favorita ? "text-orange-500 fill-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]" : "text-zinc-600 hover:text-orange-400"}`} />
+                                  </button>
+                                  <span
+                                    className={`text-2xl font-black tabular-nums leading-none ${getTierStyle(item.tier).text}`}
+                                  >
+                                    {item.score?.toFixed(1)}
+                                  </span>
+                                </div>
                               </div>
                             </CardHeader>
                             <CardContent className="pt-0">
@@ -1272,17 +1327,23 @@ export default function Home() {
                     return (
                       <div
                         key={item._id}
-                        className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/60 transition-colors cursor-pointer"
+                        className={`flex items-center justify-between p-3 rounded-lg border bg-zinc-900/50 hover:bg-zinc-900/60 transition-colors cursor-pointer ${getListBorder({ ...item, score: item.score || 0 })}`}
                         onClick={() => {
+                          if (!item.seen) markAsSeen({ id: item._id });
                           setCurrentAnalysis(item);
                           setIsModalOpen(true);
                         }}
                       >
                         <div className="flex items-center gap-3 overflow-hidden flex-1">
-                          <div
-                            className={`shrink-0 text-lg font-bold tabular-nums w-10 text-center ${getTierStyle(item.tier).text}`}
-                          >
-                            {item.score?.toFixed(1)}
+                          <div className="flex flex-col items-center justify-center gap-1 w-10 shrink-0">
+                            <button className="z-10" onClick={(e) => { e.stopPropagation(); toggleFavorite({ id: item._id }); }}>
+                              <Diamond className={`h-3.5 w-3.5 transition-colors ${item.favorita ? "text-orange-500 fill-orange-500" : "text-zinc-600 hover:text-orange-400"}`} />
+                            </button>
+                            <div
+                              className={`text-lg leading-none font-bold tabular-nums text-center ${getTierStyle(item.tier).text}`}
+                            >
+                              {item.score?.toFixed(1)}
+                            </div>
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-0.5">
@@ -1457,7 +1518,7 @@ export default function Home() {
             {/* Tarjeta de resultado reciente */}
             {currentAnalysis && (
               <Card
-                className={`border bg-zinc-900/80 shadow-xl ${getCardBorder(currentAnalysis.score)} animate-in fade-in slide-in-from-bottom-2`}
+                className={`border bg-zinc-900/80 shadow-xl ${getCardBorder(currentAnalysis)} animate-in fade-in slide-in-from-bottom-2`}
               >
                 <CardHeader className="flex flex-row items-start justify-between pb-2">
                   <div className="space-y-1">

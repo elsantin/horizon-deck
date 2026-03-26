@@ -21,6 +21,8 @@ export default defineSchema({
     postedAt: v.optional(v.string()), // Real date of the post
     jobLink: v.optional(v.string()),
     companyLink: v.optional(v.string()),
+    favorita: v.optional(v.boolean()),
+    seen: v.optional(v.boolean()),
   }),
 
   messages: defineTable({

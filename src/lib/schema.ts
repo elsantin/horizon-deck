@@ -38,9 +38,16 @@ export const horizonSchema = z.object({
   NO es un análisis estratégico. Es contexto + veredicto rápido. Tono directo.`,
   ),
   analisis_estrategico_markdown: z.string().describe(
-    `Antes de los pros y contras, incluye siempre un párrafo breve titulado "El verdadero rol" que responda: ¿qué problema real está intentando resolver la empresa con este puesto? Una o dos líneas, directo.
+    `Antes de cualquier análisis, incluye siempre una mini-ficha con este formato exacto:
 
-    Copia íntegra del análisis detallado en formato Markdown, usando emojis relevantes (✅, 🚩, ⚠️) para denotar pros, contras y alertas. Debe justificar el Score final.`,
+**🏢 Empresa:** [Nombre] — [Una oración de a qué se dedica, inferida del texto]  
+**💼 Cargo:** [Nombre exacto del rol]  
+**⏱️ Modalidad:** [Part-time / Full-time / Por proyecto / Flexible — lo que se pueda inferir] + [horas semanales si se mencionan]  
+**💰 Pago:** [Número exacto de la oferta] — [Interpretación: si es one-time, estimar equivalente mensual trabajando ~20h/sem; si es one-time sin horas definidas, indicarlo claramente; si es por horas, calcular mensual a 20h/sem y a 40h/sem; si es rango mensual, mostrar escenario conservador y optimista]
+
+Luego incluye siempre un párrafo breve titulado "El verdadero rol" que responda: ¿qué problema real está intentando resolver la empresa con este puesto?
+
+Después desarrolla el análisis detallado en formato Markdown, usando emojis obligatoriamente (✅ pros, 🚩 red flags, ⚠️ advertencias, 💰 financiero, 💻 hardware/tech). Cada punto debe estar desarrollado con contexto, razonamiento y consecuencias prácticas para Santiago. El análisis debe ser exhaustivo — un análisis corto es un análisis fallido. Debe justificar el score final.`,
   ),
   propuesta_markdown: z.string().describe(
     `Cover letter/pitch en inglés para ser copiado y pegado directamente.

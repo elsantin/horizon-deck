@@ -28,6 +28,8 @@ export const saveAnalysis = mutation({
     postedAt: v.optional(v.string()),
     jobLink: v.optional(v.string()),
     companyLink: v.optional(v.string()),
+    favorita: v.optional(v.boolean()),
+    seen: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("analysis", {
@@ -58,6 +60,28 @@ export const toggleApplied = mutation({
   },
 });
 
+// Marcar/desmarcar favorito
+export const toggleFavorite = mutation({
+  args: { id: v.id("analysis") },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (existing) {
+      await ctx.db.patch(args.id, { favorita: !existing.favorita });
+    }
+  },
+});
+
+// Marcar como visto
+export const markAsSeen = mutation({
+  args: { id: v.id("analysis") },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id);
+    if (existing && !existing.seen) {
+      await ctx.db.patch(args.id, { seen: true });
+    }
+  },
+});
+
 // Restaurar backup (Replace Total)
 export const importBackup = mutation({
   args: {
@@ -81,6 +105,8 @@ export const importBackup = mutation({
         postedAt: v.optional(v.string()),
         jobLink: v.optional(v.string()),
         companyLink: v.optional(v.string()),
+        favorita: v.optional(v.boolean()),
+        seen: v.optional(v.boolean()),
       }),
     ),
   },
