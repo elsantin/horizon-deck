@@ -2,6 +2,11 @@
 
 Todas las actualizaciones y nuevas funcionalidades de Horizon Deck se documentarán aquí.
 
+## [2026-03-30] - Correcciones de Borde y Links en el Modal
+
+- **Corregido:** Borde de la tarjeta de resultado del Analyzer ahora usa `border-2` en vez de `ring-2` (`box-shadow`) para evitar el recorte visual causado por `overflow: hidden` del contenedor padre. El ring sigue activo en el Dashboard donde no hay conflicto.
+- **Corregido:** `AnalysisModal.tsx` ahora accede correctamente a `job_link` y `company_link` (snake_case de Convex) usando coalescencia `??` sobre los campos camelCase anteriores. Los links de empresa y cargo ahora se renderizan correctamente en el header del modal y el botón "Abrir Oferta" en el tab Pitch.
+
 ## [2026-03-30] - Refinamientos de UX/UI en el Analyzer y Dashboard
 
 - **Mejorado:** Animación `pulse-slow` en tarjetas no leídas reducida a **3.5s** (antes 6s) para hacerla perceptible visualmente.

@@ -112,12 +112,16 @@ type HistoryEntry = {
 // Utilidades de score
 // ----------------------------------------------------------------
 
-const getCardBorder = (item: HorizonAnalysis, disablePulse = false) => {
+const getCardBorder = (item: HorizonAnalysis, disablePulse = false, useBorder = false) => {
   if (item.applied) return "opacity-40 border-zinc-800 grayscale-[0.8]";
   if (item.favorita) return "border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.15)]";
   if (!item.seen) {
     const pulse = disablePulse ? "" : "animate-pulse-slow ";
-    return `ring-2 ring-emerald-500 ${pulse}border-emerald-500/50 bg-emerald-500/5`;
+    // ring usa box-shadow y se recorta con overflow:hidden — usar border cuando sea necesario
+    const ringClass = useBorder
+      ? "border-2 border-emerald-500"
+      : "ring-2 ring-emerald-500";
+    return `${ringClass} ${pulse}bg-emerald-500/5`;
   }
   return item.score >= 9.0
     ? "border-emerald-500/30"
@@ -1521,7 +1525,7 @@ export default function Home() {
             {/* Tarjeta de resultado reciente — compacta, sin pulse ni resumen */}
             {currentAnalysis && (
               <Card
-                className={`border bg-zinc-900/80 shadow-xl ${getCardBorder(currentAnalysis, true)} animate-in fade-in slide-in-from-bottom-2`}
+                className={`border bg-zinc-900/80 shadow-xl ${getCardBorder(currentAnalysis, true, true)} animate-in fade-in slide-in-from-bottom-2`}
               >
                 <CardContent className="p-4">
                   {/* Fila principal: info + score */}

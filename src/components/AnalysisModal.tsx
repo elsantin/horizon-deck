@@ -130,9 +130,9 @@ export function AnalysisModal({
 
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-2xl font-black tracking-tight text-zinc-100 flex items-center gap-2">
-                  {isValidUrl(analysis.companyLink) ? (
+                  {isValidUrl(analysis.companyLink ?? analysis.company_link) ? (
                     <a
-                      href={analysis.companyLink}
+                      href={analysis.companyLink ?? analysis.company_link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:underline cursor-pointer inline-flex items-center gap-1"
@@ -146,9 +146,9 @@ export function AnalysisModal({
                 </DialogTitle>
                 <div className="mt-1 space-y-2">
                   <p className="text-base font-medium text-zinc-400 leading-tight">
-                    {isValidUrl(analysis.jobLink) ? (
+                    {isValidUrl(analysis.jobLink ?? analysis.job_link) ? (
                       <a
-                        href={analysis.jobLink}
+                        href={analysis.jobLink ?? analysis.job_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:underline cursor-pointer inline-flex items-center gap-1 text-sm text-muted-foreground"
@@ -325,9 +325,9 @@ export function AnalysisModal({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {analysis.jobLink && (
+                      {(analysis.jobLink ?? analysis.job_link) && (
                         <a
-                          href={analysis.jobLink}
+                          href={analysis.jobLink ?? analysis.job_link}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
