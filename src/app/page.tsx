@@ -112,10 +112,13 @@ type HistoryEntry = {
 // Utilidades de score
 // ----------------------------------------------------------------
 
-const getCardBorder = (item: HorizonAnalysis) => {
+const getCardBorder = (item: HorizonAnalysis, disablePulse = false) => {
   if (item.applied) return "opacity-40 border-zinc-800 grayscale-[0.8]";
   if (item.favorita) return "border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.15)]";
-  if (!item.seen) return "ring-1 ring-emerald-500 animate-pulse-slow border-emerald-500/50 bg-emerald-500/5";
+  if (!item.seen) {
+    const pulse = disablePulse ? "" : "animate-pulse-slow ";
+    return `ring-2 ring-emerald-500 ${pulse}border-emerald-500/50 bg-emerald-500/5`;
+  }
   return item.score >= 9.0
     ? "border-emerald-500/30"
     : item.score >= 8.0
@@ -1515,63 +1518,57 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Tarjeta de resultado reciente */}
+            {/* Tarjeta de resultado reciente — compacta, sin pulse ni resumen */}
             {currentAnalysis && (
               <Card
-                className={`border bg-zinc-900/80 shadow-xl ${getCardBorder(currentAnalysis)} animate-in fade-in slide-in-from-bottom-2`}
+                className={`border bg-zinc-900/80 shadow-xl ${getCardBorder(currentAnalysis, true)} animate-in fade-in slide-in-from-bottom-2`}
               >
-                <CardHeader className="flex flex-row items-start justify-between pb-2">
-                  <div className="space-y-1">
-                    <CardTitle className="text-xl text-zinc-100">
-                      {currentAnalysis.cargo}
-                    </CardTitle>
-                    <CardDescription className="text-base text-zinc-400">
-                      {currentAnalysis.empresa}
-                    </CardDescription>
+                <CardContent className="p-4">
+                  {/* Fila principal: info + score */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base font-semibold text-zinc-100 leading-tight">
+                        {currentAnalysis.cargo}
+                      </p>
+                      <p className="truncate text-sm text-zinc-400">
+                        {currentAnalysis.empresa}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0">
+                      <span
+                        className={`text-3xl font-black tabular-nums leading-none ${getTierStyle(currentAnalysis.tier).text}`}
+                      >
+                        {currentAnalysis.score.toFixed(1)}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="mt-1 text-[10px] border-emerald-500/30 text-emerald-400 bg-emerald-500/5"
+                      >
+                        {currentAnalysis.tier}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={`text-5xl font-black tabular-nums leading-none ${getTierStyle(currentAnalysis.tier).text}`}
-                    >
-                      {currentAnalysis.score.toFixed(1)}
-                    </span>
-                    <Badge
+                  {/* Fila secundaria: badges + botón */}
+                  <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge variant="secondary" className="bg-zinc-800 text-zinc-300 text-xs">
+                        💰 {currentAnalysis.pago}
+                      </Badge>
+                      <Badge variant="secondary" className="bg-zinc-800 text-zinc-300 text-xs">
+                        ⚡ {currentAnalysis.esfuerzo}
+                      </Badge>
+                    </div>
+                    <Button
                       variant="outline"
-                      className="border-emerald-500/30 text-emerald-400 bg-emerald-500/5"
+                      size="sm"
+                      onClick={() => setIsModalOpen(true)}
+                      className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 h-7 text-xs"
                     >
-                      {currentAnalysis.tier}
-                    </Badge>
+                      <Briefcase className="mr-1.5 h-3.5 w-3.5" />
+                      Open Brief
+                    </Button>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge
-                      variant="secondary"
-                      className="bg-zinc-800 text-zinc-300"
-                    >
-                      💰 {currentAnalysis.pago}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="bg-zinc-800 text-zinc-300"
-                    >
-                      ⚡ {currentAnalysis.esfuerzo}
-                    </Badge>
-                  </div>
-                  <p className="border-l-2 border-orange-500/40 pl-4 text-sm italic text-zinc-400 line-clamp-3">
-                    &ldquo;{currentAnalysis.resumen_ejecutivo}&rdquo;
-                  </p>
                 </CardContent>
-                <CardFooter className="border-t border-zinc-800 pt-4 flex justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsModalOpen(true)}
-                    className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
-                  >
-                    <Briefcase className="mr-2 h-4 w-4" />
-                    Open Detailed Brief
-                  </Button>
-                </CardFooter>
               </Card>
             )}
           </TabsContent>
