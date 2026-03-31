@@ -4,7 +4,7 @@ Este documento hace seguimiento de la **Deuda Técnica** y **Futuras Implementac
 
 ## Deuda Técnica
 
-Sin marcadores `TODO:`, `FIXME:` o `FUTURE:` en el código fuente a la fecha de la última auditoría (2026-03-30).
+Sin marcadores `TODO:`, `FIXME:` o `FUTURE:` en el código fuente a la fecha de la última auditoría (2026-03-31).
 
 **Observaciones de arquitectura (sin bloqueo):**
 

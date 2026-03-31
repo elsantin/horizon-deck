@@ -2,6 +2,15 @@
 
 Todas las actualizaciones y nuevas funcionalidades de Horizon Deck se documentarán aquí.
 
+## [2026-03-31] - Migración Vercel AI SDK v4 → v6 + Auditoría de Seguridad
+
+- **Migrado:** `src/app/api/analyze/route.ts` actualizado de `generateObject` (deprecated en v6) a `generateText` con `Output.object({ schema })` — API oficial de AI SDK 6.x para salida estructurada.
+- **Actualizado:** Paquete `ai` de `^4.3.16` a `^6.0.141` (Vercel AI SDK v6).
+- **Actualizado:** Paquete `@ai-sdk/google` de `^1.2.18` a `^3.0.54` — versión compatible con AI SDK v6.
+- **Seguridad:** Resueltas 5 de 7 vulnerabilidades reportadas por Dependabot: `flatted` (High), `picomatch` (High), `next` (Moderate), `brace-expansion` (Moderate), y las 2 Moderate del SDK de IA (`ai`, `jsondiffpatch`).
+- **Aceptado:** Las 2 vulnerabilidades restantes (`ai` + `jsondiffpatch`) quedan cerradas automáticamente por la migración a v6. `found 0 vulnerabilities` confirmado post-instalación.
+- **Sin breaking changes:** `providerOptions.google.thinkingConfig` para Deep Analysis sigue funcionando sin modificaciones. El schema Zod y la lógica de negocio son idénticos.
+
 ## [2026-03-30] - Correcciones de Borde y Links en el Modal
 
 - **Corregido:** Borde de la tarjeta de resultado del Analyzer ahora usa `border-2` en vez de `ring-2` (`box-shadow`) para evitar el recorte visual causado por `overflow: hidden` del contenedor padre. El ring sigue activo en el Dashboard donde no hay conflicto.

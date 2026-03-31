@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { google } from '@ai-sdk/google';
 import { horizonSchema } from '@/lib/schema';
 import type { HorizonSettings } from '@/lib/settings';
@@ -69,9 +69,9 @@ ${oferta}
     // El model del body tiene prioridad; fallback al preferredModel de settings
     const modelToUse = model ?? settings.preferredModel ?? 'gemini-3-flash-preview';
 
-    const { object: aiResult } = await generateObject({
+    const { output: aiResult } = await generateText({
       model: google(modelToUse),
-      schema: horizonSchema,
+      output: Output.object({ schema: horizonSchema }),
       prompt: fullPrompt,
       ...(deepAnalysis && {
         providerOptions: {
